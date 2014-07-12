@@ -28,6 +28,9 @@ dolly do |str|
   puts "Hello #{str}!"
 end
 
+# Equivalente ao visto acima, utilizando chaves
+world { |str| puts "Hello #{str}!" }
+
 # O método dolly está disponível dentro desse bloco
 world do |str|
   puts "Hello #{dolly}#{str}!"
@@ -55,7 +58,7 @@ end
 class Foo
   attr_reader :bar
   def initialize
-    @bar = "nothing"
+    @bar = "Nothing!"
   end
 
   def run
@@ -75,7 +78,7 @@ foo = Foo.new
 # dentro da instância foo, já que o bloco é declarado em um lugar onde 
 # não há acesso a ela
 foo.run do
-  @bar = "hi"
+  @bar = "Hi!"
 end
 puts foo.bar
 
@@ -88,11 +91,11 @@ puts foo.bar
 class MoreFoo
   attr_reader :bar
   def initialize
-    @bar = "nothing"
+    @bar = "Nothing!"
   end
 
   def zas
-    "traz"
+    "Traz!"
   end
 
   def get_proc
@@ -124,6 +127,35 @@ change_local = proc do # equivalente a Proc.new
 end
 morefoo.exec(change_local)
 puts something
+
+# Retornando em Procs
+
+# Isto é permitido
+def return_ok
+  p = proc do
+    return "Hello from a Proc!"
+  end
+  p.call
+  return "Bye!"
+end
+
+puts return_ok
+
+# Isto não é
+def return_fail(proc)
+  proc.call
+  return "Bye!"
+end
+
+proc_fail = proc do
+  return "Hello from a Proc!"
+end
+
+begin
+  puts return_fail(proc_fail)
+rescue
+  puts "It failed!"
+end
 
 # Convertendo blocos para procs
 def convert(&block)
@@ -160,9 +192,48 @@ array.each(&print_string)
 
 array.map(&:upcase).each(&print_string)
 
+# Lambdas
 
+# Criando um lambda - converte e imprime objetos arbitrários na tela
+print_object = lambda do |obj|
+  puts obj.to_s
+end
 
+['a', 1, :c, /abc/].each(&print_object)
 
+# Retornando de lambdas e procs
+check_if_even_proc = proc do |x|
+  return x.even?
+end
 
+check_if_even_lambda = ->(x) do # Sintaxe alternativa utilizando flechas e argumentos fora do bloco
+  return x.even?
+end
 
+# Uma função de exemplo
+def sum(array, predicate)
+  array.select(&predicate).reduce(:+)
+end
 
+# Como visto anteriormente, Procs utilizando return irão falhar...
+puts sum([1,2,3,4], check_if_even_proc) rescue puts "Crash!" 
+
+# Mas lambdas não - return neste caso equivale apenas a finalizar o bloco retornando um valor
+puts sum([1,2,3,4], check_if_even_lambda)
+
+# Lambdas verificam os argumentos passados - exemplo utilizando Procs e lambdas
+identity_lambda = ->(a, b) { puts [a, b].inspect }
+identity_proc = proc { |a, b| puts [a, b].inspect }
+
+identity_lambda.call(1, 2)
+identity_proc.call(1, 2)
+
+# Aqui a chamada do lambda ira falhar com um ArgumentError
+identity_lambda.call(1, 2, 3) rescue puts "Crash!"
+# Mas o Proc continua firme e forte, só ignorando o que vier depois do segundo argumento
+identity_proc.call(1, 2, 3)
+
+# Falhando novamente
+identity_lambda.call(1) rescue puts "Crash again!"
+# O que não foi passado é tratado como nil pelo Proc
+identity_proc.call(1)
